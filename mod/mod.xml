@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModInfo>
+  <ID>0b3d409a-1923-4e94-9d41-ffa331b6d517</ID>
+  <Name>FF8 Steam Deck Button Glyphs</Name>
+  <Author>todi</Author>
+  <Version>0.1</Version>
+  <Category>User Interface</Category>
+  <ReleaseDate>2026-10-09</ReleaseDate>
+  <Description>Shows the Steam Deck / Steam Controller face buttons (A, B, X, Y, L1/R1, L2/R2, View, Menu) wherever FF8 names a button, instead of "B1", "B2", ...
+
+Requires the English Steam 2013 version of FF8 with FFNx (as installed by Junction VIII). Turns on FFNx's ff8_use_gamepad_icons.</Description>
+  <ReleaseNotes>0.1: work in progress.</ReleaseNotes>
+  <FFNxConfig>
+    <ff8_use_gamepad_icons>true</ff8_use_gamepad_icons>
+  </FFNxConfig>
+</ModInfo>

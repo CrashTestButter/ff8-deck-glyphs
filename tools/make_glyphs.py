@@ -1,0 +1,310 @@
+#!/usr/bin/env python3
+"""Build the two FFNx replacement pages of the FF8 menu icon texture with Steam Deck glyphs.
+
+FFNx loads menu/hires/iconfl01_04 and iconfl03_04 for the sprites the game draws from those pages with
+palette 4 (CLUT row 260 in icon.sp1). Only these sprites are drawn here, all our own art; the rest of
+each 1024x1024 page stays transparent (it is never sampled with palette 4). No game files needed.
+
+Cell positions come from icon.sp1: a sprite at VRAM (u, v) lies on hires page
+iconfl0<(u >= 128) + 2 * (v >= 128)> at ((u % 128) * 8, (v % 128) * 8) in the 1024 atlas.
+FFNx (steam_stock_launcher) shows these PS icons for the DirectInput buttons below,
+which on a Deck are: Cross = A, Circle = B, Square = X, Triangle = Y, L1, R1, L2, R2,
+Select = View, Start = Menu.
+
+Output is uncompressed DDS (B8G8R8A8, one mip): FFNx tries mod_ext "dds" before "png", so only a DDS
+can compete with other texture mods (e.g. AxlRose's UI) - then J8's load order decides.
+
+Usage: make_glyphs.py <out folder> [--valve <dir>]   (writes iconfl01_04.dds, iconfl03_04.dds)
+
+--valve <dir>: use Valve's Steam Deck glyphs for the buttons instead of our own drawings, e.g.
+~/.local/share/Steam/controller_base/images/api/dark (the *_lg.png files). Valve's art: local use only,
+do not ship it until Valve allows redistribution.
+"""
+import os, struct, sys
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+FONTS = ['/usr/share/fonts/TTF/DejaVuSans-Bold.ttf',                  # Arch
+         '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf']      # Debian/Ubuntu (fonts-dejavu-core)
+FONT = next((f for f in FONTS if os.path.exists(f)), FONTS[0])
+SS = 4  # supersampling factor for drawing
+
+# Colours: the Deck's buttons are dark grey with white legends.
+BODY_TOP, BODY_BOTTOM = (74, 77, 84), (30, 31, 35)
+RIM = (150, 154, 162)
+SHADOW = (0, 0, 0, 150)
+LEGEND = (255, 255, 255)
+
+# (page, x, y, w, h, kind, label) in 1024-atlas pixels
+CELLS = [
+    # page 01, v 112: sp1 ids 139 START, 133 Circle, 134 Cross, 135 Square, 132 Triangle
+    (1, 256, 896, 256, 128, 'wide', 'menu'),
+    (1, 512, 896, 128, 128, 'face', 'B'),
+    (1, 640, 896, 128, 128, 'face', 'A'),
+    (1, 768, 896, 128, 128, 'face', 'X'),
+    (1, 896, 896, 128, 128, 'face', 'Y'),
+    # page 03, v 128: ids 136 SELECT, 131 R1, 129 R2, 130 L1, 128 L2
+    (3, 256, 0, 256, 128, 'wide', 'view'),
+    (3, 512, 0, 128, 128, 'bumper', 'R1'),
+    (3, 640, 0, 128, 128, 'trigger', 'R2'),
+    (3, 768, 0, 128, 128, 'bumper', 'L1'),
+    (3, 896, 0, 128, 128, 'trigger', 'L2'),
+    # page 03, v 240..255: small fixed set, ids 245 Circle, 246 Cross, 247 Square, 244 Triangle,
+    # 243 R1, 241 R2, 242 L1, 240 L2
+    (3, 640, 896, 64, 64, 'face', 'B'),
+    (3, 704, 896, 64, 64, 'face', 'A'),
+    (3, 640, 960, 64, 64, 'face', 'X'),
+    (3, 704, 960, 64, 64, 'face', 'Y'),
+    (3, 768, 896, 128, 64, 'bumper', 'R1'),
+    (3, 896, 896, 128, 64, 'trigger', 'R2'),
+    (3, 768, 960, 128, 64, 'bumper', 'L1'),
+    (3, 896, 960, 128, 64, 'trigger', 'L2'),
+    # other palette-4 sprites on these pages
+    (1, 256, 512, 64, 128, 'arrow', ''),        # id 6: menu pointer arrow (u160 v64, 8x16)
+    (1, 768, 768, 128, 128, 'letter', 'A'),     # id 178 (u224 v96)
+    (3, 0, 0, 128, 128, 'face', 'L'),           # id 137 (u128 v128)
+    (3, 256, 896, 128, 128, 'star', ''),        # id 175 (u160 v240)
+    # ids 140..143: D-pad with one arm lit, built from 8x8 arm tiles (u176..207 v80..95)
+    (1, 384, 640, 64, 64, 'dpad', 'up+'),
+    (1, 512, 640, 64, 64, 'dpad', 'up'),
+    (1, 448, 640, 64, 64, 'dpad', 'right+'),
+    (1, 576, 640, 64, 64, 'dpad', 'right'),
+    (1, 384, 704, 64, 64, 'dpad', 'left+'),
+    (1, 512, 704, 64, 64, 'dpad', 'left'),
+    (1, 448, 704, 64, 64, 'dpad', 'down+'),
+    (1, 576, 704, 64, 64, 'dpad', 'down'),
+]
+
+
+def gradient_fill(size, mask, top, bottom):
+    w, h = size
+    grad = Image.new('RGBA', (1, h))
+    for y in range(h):
+        t = y / max(h - 1, 1)
+        grad.putpixel((0, y), tuple(round(a + (b - a) * t) for a, b in zip(top, bottom)) + (255,))
+    layer = Image.new('RGBA', size, (0, 0, 0, 0))
+    layer.paste(grad.resize(size), (0, 0), mask)
+    return layer
+
+
+def text_center(draw, box, text, size):
+    font = ImageFont.truetype(FONT, size)
+    l, t, r, b = draw.textbbox((0, 0), text, font=font)
+    x0, y0, x1, y1 = box
+    draw.text(((x0 + x1 - (r - l)) / 2 - l, (y0 + y1 - (b - t)) / 2 - t), text, font=font, fill=LEGEND)
+
+
+def shape_mask(size, kind, box):
+    """Mask of the button body inside box (all in supersampled pixels)."""
+    m = Image.new('L', size, 0)
+    d = ImageDraw.Draw(m)
+    x0, y0, x1, y1 = box
+    if kind == 'face':
+        d.ellipse(box, fill=255)
+    elif kind == 'bumper':  # flat bar, rounded, with a sloped outer top corner
+        d.rounded_rectangle(box, radius=(y1 - y0) * 0.38, fill=255)
+    elif kind == 'trigger':  # taller, strongly rounded top
+        d.rounded_rectangle(box, radius=(x1 - x0) * 0.22, fill=255)
+        d.pieslice((x0, y0, x1, y0 + (x1 - x0) * 0.9), 180, 360, fill=255)
+    elif kind == 'pill':
+        d.rounded_rectangle(box, radius=(y1 - y0) / 2, fill=255)
+    return m
+
+
+def draw_button(size, kind, box, rim_px):
+    """Body with shadow, rim and gradient; returns RGBA layer."""
+    layer = Image.new('RGBA', size, (0, 0, 0, 0))
+    x0, y0, x1, y1 = box
+    off = rim_px
+    shadow = shape_mask(size, kind, (x0, y0 + off, x1, y1 + off))
+    layer.paste(Image.new('RGBA', size, SHADOW), (0, 0), shadow)
+    outer = shape_mask(size, kind, box)
+    layer.alpha_composite(gradient_fill(size, outer, RIM, (70, 72, 78)))
+    inner = shape_mask(size, kind, (x0 + rim_px, y0 + rim_px, x1 - rim_px, y1 - rim_px))
+    layer.alpha_composite(gradient_fill(size, inner, BODY_TOP, BODY_BOTTOM))
+    return layer
+
+
+def view_symbol(draw, cx, cy, s, width):
+    """Two overlapping squares (View)."""
+    a = s * 0.62
+    draw.rectangle((cx - s / 2, cy - s / 2, cx - s / 2 + a, cy - s / 2 + a), outline=LEGEND, width=width)
+    draw.rectangle((cx + s / 2 - a, cy + s / 2 - a, cx + s / 2, cy + s / 2), fill=LEGEND)
+
+
+def menu_symbol(draw, cx, cy, s, width):
+    """Three horizontal lines (Menu)."""
+    for k in (-1, 0, 1):
+        y = cy + k * s * 0.36
+        draw.rounded_rectangle((cx - s / 2, y - width / 2, cx + s / 2, y + width / 2), radius=width / 2, fill=LEGEND)
+
+
+def glyph(w, h, kind, label):
+    if kind == 'dpad':
+        return dpad_tile(w, h, label)
+    if kind == 'arrow':
+        return arrow(w, h)
+    if kind == 'star':
+        return star(w, h)
+    if kind == 'letter':
+        return letter(w, h, label)
+    W, H = w * SS, h * SS
+    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    unit = min(W, H)
+    rim = max(round(unit * 0.045), SS * 2)
+    pad = round(unit * 0.06)
+    if kind == 'face':
+        box = (pad, pad, W - pad, H - pad - rim)
+        img.alpha_composite(draw_button((W, H), kind, box, rim))
+        text_center(ImageDraw.Draw(img), box, label, round((box[3] - box[1]) * 0.62))
+    elif kind in ('bumper', 'trigger'):
+        if kind == 'bumper':
+            box = (pad, round(H * 0.18), W - pad, H - pad - rim)
+        else:
+            box = (round(W * 0.10), pad, W - round(W * 0.10), H - pad - rim)
+        img.alpha_composite(draw_button((W, H), kind, box, rim))
+        tb = (box[0], box[1] + (box[3] - box[1]) * (0.12 if kind == 'trigger' else 0), box[2], box[3])
+        text_center(ImageDraw.Draw(img), tb, label, round(min((box[3] - box[1]) * 0.62, (box[2] - box[0]) * 0.42)))
+    elif kind == 'wide':  # pill filling the wide slot, symbol only (like the Deck's View/Menu buttons)
+        box = (pad, pad, W - pad, H - pad - rim)
+        img.alpha_composite(draw_button((W, H), 'pill', box, rim))
+        d = box[3] - box[1]
+        cx, cy, s = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2, d * 0.5
+        (view_symbol if label == 'view' else menu_symbol)(ImageDraw.Draw(img), cx, cy, s, max(round(d * 0.08), SS))
+    return img.resize((w, h), Image.LANCZOS)
+
+
+OUTLINE = (20, 20, 24, 255)
+
+
+def styled(size, mask, rim, top, bottom, outline_px, rim_px):
+    """Dark outline around mask, a rim in colour rim, then the body as a top-to-bottom gradient."""
+    grow = mask.filter(ImageFilter.MaxFilter(2 * outline_px + 1))
+    body = mask.filter(ImageFilter.MinFilter(2 * rim_px + 1))
+    layer = Image.new('RGBA', size, (0, 0, 0, 0))
+    layer.paste(Image.new('RGBA', size, OUTLINE), (0, 0), grow)
+    layer.alpha_composite(gradient_fill(size, mask, rim, tuple(c * 3 // 5 for c in rim)))
+    layer.alpha_composite(gradient_fill(size, body, top, bottom))
+    return layer
+
+
+def poly_mask(size, points):
+    m = Image.new('L', size, 0)
+    ImageDraw.Draw(m).polygon(points, fill=255)
+    return m
+
+
+def dpad_tile(w, h, label):
+    """One D-pad arm in its 8x8 tile (layout as in vanilla): the flat end points outward, the tip to
+    the centre. Up/down arms fill x 1..7, y 0..6 (down: y 0..6 too, tip at the top); left/right fill
+    x 0..6, y 1..7. A '+' label is the lit arm (pressed direction)."""
+    W, H = w * SS, h * SS
+    u = W / 8  # one VRAM pixel
+    lit = label.endswith('+')
+    d = label.rstrip('+')
+    o = 0.7 * u  # room for the outline
+    if d in ('up', 'down'):
+        x0, x1, y0, y1 = 1 * u + o, 7 * u - o, 0 + o, 6 * u - o
+        if d == 'up':
+            pts = [(x0, y0), (x1, y0), (x1, y1 - 2.4 * u), ((x0 + x1) / 2, y1), (x0, y1 - 2.4 * u)]
+        else:
+            pts = [(x0, y1), (x1, y1), (x1, y0 + 2.4 * u), ((x0 + x1) / 2, y0), (x0, y0 + 2.4 * u)]
+    else:
+        x0, x1, y0, y1 = 0 + o, 6 * u - o, 1 * u + o, 7 * u - o
+        if d == 'left':
+            pts = [(x0, y0), (x0, y1), (x1 - 2.4 * u, y1), (x1, (y0 + y1) / 2), (x1 - 2.4 * u, y0)]
+        else:
+            pts = [(x1, y0), (x1, y1), (x0 + 2.4 * u, y1), (x0, (y0 + y1) / 2), (x0 + 2.4 * u, y0)]
+    mask = poly_mask((W, H), pts)
+    if lit:
+        img = styled((W, H), mask, (255, 255, 255), (250, 250, 252), (196, 200, 208), round(o), round(0.35 * u))
+    else:
+        img = styled((W, H), mask, RIM, BODY_TOP, BODY_BOTTOM, round(o), round(0.35 * u))
+    return img.resize((w, h), Image.LANCZOS)
+
+
+def arrow(w, h):
+    """Menu pointer: red triangle pointing right, in the top-left 5.5 x 10 VRAM px of its 8x16 cell."""
+    W, H = w * SS, h * SS
+    u = W / 8
+    o = 0.6 * u
+    mask = poly_mask((W, H), [(o, o), (5.5 * u - o, 5 * u), (o, 10 * u - o)])
+    img = styled((W, H), mask, (255, 150, 140), (236, 52, 40), (150, 16, 12), round(o), round(0.4 * u))
+    return img.resize((w, h), Image.LANCZOS)
+
+
+def star(w, h):
+    import math
+    W, H = w * SS, h * SS
+    cx, cy, r_out = W / 2, H / 2 + H * 0.03, W * 0.44
+    r_in = r_out * 0.45
+    pts = [(cx + (r_out if k % 2 == 0 else r_in) * math.sin(k * math.pi / 5),
+            cy - (r_out if k % 2 == 0 else r_in) * math.cos(k * math.pi / 5)) for k in range(10)]
+    o = round(W * 0.045)
+    img = styled((W, H), poly_mask((W, H), pts), (170, 245, 180), (96, 220, 120), (24, 130, 56), o, round(W * 0.03))
+    return img.resize((w, h), Image.LANCZOS)
+
+
+def letter(w, h, text):
+    """White letter with a grey rim and dark outline."""
+    W, H = w * SS, h * SS
+    font = ImageFont.truetype(FONT, round(H * 0.82))
+    mask = Image.new('L', (W, H), 0)
+    d = ImageDraw.Draw(mask)
+    l, t, r, b = d.textbbox((0, 0), text, font=font)
+    d.text(((W - (r - l)) / 2 - l, (H - (b - t)) / 2 - t), text, font=font, fill=255)
+    img = styled((W, H), mask, (150, 154, 162), (255, 255, 255), (205, 208, 214), round(W * 0.035), round(W * 0.03))
+    return img.resize((w, h), Image.LANCZOS)
+
+
+VALVE_FILE = {'A': 'shared_button_a', 'B': 'shared_button_b', 'X': 'shared_button_x', 'Y': 'shared_button_y',
+              'L1': 'sd_l1', 'R1': 'sd_r1', 'L2': 'sd_l2', 'R2': 'sd_r2',
+              'view': 'sd_button_view', 'menu': 'sd_button_menu'}
+
+
+def valve_glyph(folder, w, h, label):
+    """Valve's 256x256 glyph, cropped to its content and fitted into the cell (aspect kept, centred)."""
+    src = Image.open(os.path.join(folder, VALVE_FILE[label] + '_lg.png')).convert('RGBA')
+    src = src.crop(src.getbbox())
+    pad = round(min(w, h) * 0.04)
+    scale = min((w - 2 * pad) / src.width, (h - 2 * pad) / src.height)
+    src = src.resize((max(1, round(src.width * scale)), max(1, round(src.height * scale))), Image.LANCZOS)
+    img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    img.alpha_composite(src, ((w - src.width) // 2, (h - src.height) // 2))
+    return img
+
+
+def save_dds(im, path):
+    """Legacy DDS header, 32-bit A8R8G8B8 (BGRA in memory), no mipmaps."""
+    w, h = im.size
+    pf = struct.pack('<II4sIIIII', 32, 0x41, b'\0\0\0\0', 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000)
+    head = struct.pack('<4sIIIIIII', b'DDS ', 124, 0x100F, h, w, w * 4, 0, 1) + b'\0' * 44 + pf
+    head += struct.pack('<IIIII', 0x1000, 0, 0, 0, 0)
+    assert len(head) == 128
+    r, g, b, a = im.convert('RGBA').split()
+    with open(path, 'wb') as f:
+        f.write(head + Image.merge('RGBA', (b, g, r, a)).tobytes())
+
+
+def build(out, valve=None):
+    os.makedirs(out, exist_ok=True)
+    for page in (1, 3):
+        atlas = Image.new('RGBA', (1024, 1024), (0, 0, 0, 0))
+        for p, x, y, w, h, kind, label in CELLS:
+            if p != page:
+                continue
+            atlas.paste((0, 0, 0, 0), (x, y, x + w, y + h))
+            use_valve = valve and label in VALVE_FILE and kind not in ('letter', 'dpad')
+            atlas.alpha_composite(valve_glyph(valve, w, h, label) if use_valve else glyph(w, h, kind, label), (x, y))
+        path = os.path.join(out, f'iconfl{page:02d}_04.dds')
+        save_dds(atlas, path)
+        print(path, atlas.size)
+
+
+if __name__ == '__main__':
+    args = sys.argv[1:]
+    valve = None
+    if '--valve' in args:
+        k = args.index('--valve')
+        valve = os.path.expanduser(args[k + 1])
+        del args[k:k + 2]
+    build(args[0], valve)

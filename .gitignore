@@ -1,3 +1,7 @@
 reference/
 dist/
 *.iroj
+build/
+mod/mods/Textures/
+mod/deckglyphs.dll
+tools/__pycache__/

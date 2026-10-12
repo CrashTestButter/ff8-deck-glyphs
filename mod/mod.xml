@@ -13,7 +13,7 @@ Requires the English Steam 2013 version of FF8 with FFNx (as installed by Juncti
 Timber train mission: the keypad diamond in Rinoa's explanation follows the Deck's layout (Y top, X left, B right, A bottom); each code number moves to the button its command is bound to (deckglyphs.dll, log in deckglyphs.log in the game folder).
 
 With AxlRose's WIP (UI on): both mods ship menu/hires/iconfl01_04.dds and iconfl03_04.dds. Place this mod ABOVE AxlRose's in the Junction VIII list so the Deck glyphs win.</Description>
-  <ReleaseNotes>0.7: all art on the two icon pages is our own (menu pointer, D-pad, star and others redrawn); built from source by GitHub Actions. 0.6: View and Menu as a pill with the symbol only. 0.5: back to our own grey glyphs with rim. 0.4: Valve's official Steam Deck glyphs (local build, not for release yet). 0.3: icon textures as DDS, so J8 load order decides against other UI mods. 0.2: train mission keypad diamond follows the hardware layout. 0.1: Deck glyphs for the button icons.</ReleaseNotes>
+  <ReleaseNotes>0.7: first public release. Deck glyphs for all button icons, Timber train keypad follows the Deck layout, menu pointer and D-pad icons redrawn to match.</ReleaseNotes>
   <LoadLibrary>deckglyphs.dll</LoadLibrary>
   <FFNxConfig>
     <ff8_use_gamepad_icons>true</ff8_use_gamepad_icons>

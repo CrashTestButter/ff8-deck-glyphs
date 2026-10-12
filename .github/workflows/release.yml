@@ -1,7 +1,6 @@
 name: release
 
-# Push a tag like v0.7 (annotated; its message becomes the release notes) to build and publish
-# dist/FF8DeckGlyphs.iroj. Junction VIII links to releases/latest/download/FF8DeckGlyphs.iroj.
+# Annotated tag v*: the tag message becomes the release notes.
 on:
   push:
     tags: ['v*']

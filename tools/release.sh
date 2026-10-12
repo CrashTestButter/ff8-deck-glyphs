@@ -1,9 +1,5 @@
 #!/bin/sh
-# Build everything from source and pack the Junction VIII mod.
-# Usage: tools/release.sh <version>   ->  dist/FF8DeckGlyphs.iroj
-# Steps: DLL (clang + lld-link), host tests, glyph textures (own art, no game files), copy of mod/
-# with <Version> and <ReleaseDate> set, .iroj. Needs clang, lld, llvm (llvm-dlltool), python3 + Pillow,
-# DejaVu Sans Bold.
+# Usage: tools/release.sh <version>   (writes dist/FF8DeckGlyphs.iroj)
 set -e
 cd "$(dirname "$0")/.."
 V=${1:?usage: tools/release.sh <version>}

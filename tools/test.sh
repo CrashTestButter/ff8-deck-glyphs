@@ -1,5 +1,4 @@
 #!/bin/sh
-# Host test of the diamond rearranging logic in src/deckglyphs.c.
 set -e
 cd "$(dirname "$0")/.."
 mkdir -p build

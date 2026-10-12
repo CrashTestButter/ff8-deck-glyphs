@@ -4,7 +4,7 @@ Shows the **Steam Deck** buttons (A, B, X, Y, L1/R1, L2/R2, View, Menu) wherever
 VIII** (Steam 2013) names a button, instead of the PC version's "B1", "B2", ... labels. Packaged as a
 Junction VIII mod.
 
-> _Screenshot placeholder: Config > Button assignment and the Timber train briefing on a Deck._
+![Config > Button assignment with Deck glyphs](docs/button-assignment.png)
 
 - The glyph shown always matches the button the command is bound to in the game's own Config
   screen, so custom bindings are fine.

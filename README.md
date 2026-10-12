@@ -49,6 +49,9 @@ Needs clang, lld, llvm (`llvm-dlltool`), Python 3 with Pillow and DejaVu Sans Bo
 tools/release.sh 0.7      # DLL, tests, textures, dist/FF8DeckGlyphs.iroj
 ```
 
+`tools/bump.sh major|minor|bugfix` raises `<Version>` in `mod/mod.xml` (0.7 -> 0.71 -> 0.8 -> 1.0;
+Junction VIII compares versions as decimal numbers, so minor and bugfix are one digit each).
+
 Releases are built by GitHub Actions (`.github/workflows/release.yml`): push an annotated tag
 `vX.Y`; its message becomes the release notes.
 

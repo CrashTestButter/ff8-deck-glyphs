@@ -39,6 +39,10 @@ __declspec(dllimport) HANDLE WINAPI CreateFileA(LPCSTR, DWORD, DWORD, void *, DW
 __declspec(dllimport) BOOL WINAPI WriteFile(HANDLE, const void *, DWORD, DWORD *, void *);
 __declspec(dllimport) BOOL WINAPI CloseHandle(HANDLE);
 
+#ifndef DECKGLYPHS_VERSION
+#define DECKGLYPHS_VERSION "dev"
+#endif
+
 #define CALL_SITE        0x0049FD14u /* E8 -> Text_RenderGlyphs */
 #define TEXT_RENDER      0x004A1570u /* void __cdecl (uint32_t *ot, win_obj *win) */
 #ifndef DECKGLYPHS_TEST
@@ -171,7 +175,7 @@ static void install(void)
     static const uint8_t key[4]    = {0x8B, 0x44, 0x24, 0x04};
     DWORD old;
     g_log = CreateFileA("deckglyphs.log", GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, 0x80, 0);
-    log_str("deckglyphs 0.6\n");
+    log_str("deckglyphs " DECKGLYPHS_VERSION "\n");
     if (!bytes_equal(CALL_SITE, site, 5) || !bytes_equal(TEXT_RENDER, render, 4) || !bytes_equal(GET_COMMAND_KEY, key, 4)) {
         log_str("unknown FF8_EN.exe (bytes differ), train diamond fix disabled\n");
         return;

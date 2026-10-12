@@ -22,26 +22,14 @@
 typedef int BOOL;
 typedef unsigned long DWORD;
 typedef void *HANDLE;
-typedef const char *LPCSTR;
 #define WINAPI __stdcall
 #define DLL_PROCESS_ATTACH 1
 #define PAGE_EXECUTE_READWRITE 0x40
-#define GENERIC_WRITE 0x40000000
-#define FILE_SHARE_READ 1
-#define CREATE_ALWAYS 2
-#define INVALID_HANDLE_VALUE ((HANDLE)(intptr_t)-1)
 
 __declspec(dllimport) BOOL WINAPI VirtualProtect(void *, uintptr_t, DWORD, DWORD *);
 __declspec(dllimport) BOOL WINAPI FlushInstructionCache(HANDLE, const void *, uintptr_t);
 __declspec(dllimport) HANDLE WINAPI GetCurrentProcess(void);
 __declspec(dllimport) DWORD WINAPI GetModuleFileNameA(HANDLE, char *, DWORD);
-__declspec(dllimport) HANDLE WINAPI CreateFileA(LPCSTR, DWORD, DWORD, void *, DWORD, DWORD, HANDLE);
-__declspec(dllimport) BOOL WINAPI WriteFile(HANDLE, const void *, DWORD, DWORD *, void *);
-__declspec(dllimport) BOOL WINAPI CloseHandle(HANDLE);
-
-#ifndef DECKGLYPHS_VERSION
-#define DECKGLYPHS_VERSION "dev"
-#endif
 
 #define CALL_SITE        0x0049FD14u /* E8 -> Text_RenderGlyphs */
 #define TEXT_RENDER      0x004A1570u /* void __cdecl (uint32_t *ot, win_obj *win) */
@@ -52,16 +40,6 @@ __declspec(dllimport) BOOL WINAPI CloseHandle(HANDLE);
 
 typedef void(__cdecl *text_render_t)(uint32_t *, uint8_t *);
 typedef int(__cdecl *get_command_key_t)(int, int, int);
-
-static HANDLE g_log = INVALID_HANDLE_VALUE;
-
-static void log_str(const char *s)
-{
-    DWORD n = 0, w;
-    if (g_log == INVALID_HANDLE_VALUE) return;
-    while (s[n]) n++;
-    WriteFile(g_log, s, n, &w, 0);
-}
 
 /* Diamond pairs in the original text order: top, left, right, bottom. FF8 text: 0x05 <0x30+n> is
  * icon 0x80+n, digits '1'..'4' are 0x22..0x25. */
@@ -121,23 +99,9 @@ static void fix_diamond(uint8_t *t)
         for (s = 0; s < N; s++) want[s] = SLOT_ICON[s];
     }
 
-    int changed = 0;
-    for (s = 0; s < N; s++)
-        if (pos[s][1] != want[s]) { pos[s][1] = want[s]; pos[s][2] = digit_of(want[s]); changed = 1; }
-    if (changed) {
-        static const char *name[] = {"Tri", "Cir", "Crs", "Sqr"};
-        static const char head[] = "diamond: top/left/right/bottom =";
-        char line[64];
-        int n = 0;
-        while (head[n]) { line[n] = head[n]; n++; }
-        for (s = 0; s < N; s++) {
-            const char *p = name[want[s] - 0x34];
-            line[n++] = ' ';
-            while (*p) line[n++] = *p++;
-        }
-        line[n++] = '\n';
-        line[n] = 0;
-        log_str(line);
+    for (s = 0; s < N; s++) {
+        pos[s][1] = want[s];
+        pos[s][2] = digit_of(want[s]);
     }
 }
 
@@ -174,20 +138,13 @@ static void install(void)
     static const uint8_t render[4] = {0x83, 0xEC, 0x28, 0x53};
     static const uint8_t key[4]    = {0x8B, 0x44, 0x24, 0x04};
     DWORD old;
-    g_log = CreateFileA("deckglyphs.log", GENERIC_WRITE, FILE_SHARE_READ, 0, CREATE_ALWAYS, 0x80, 0);
-    log_str("deckglyphs " DECKGLYPHS_VERSION "\n");
-    if (!bytes_equal(CALL_SITE, site, 5) || !bytes_equal(TEXT_RENDER, render, 4) || !bytes_equal(GET_COMMAND_KEY, key, 4)) {
-        log_str("unknown FF8_EN.exe (bytes differ), train diamond fix disabled\n");
+    if (!bytes_equal(CALL_SITE, site, 5) || !bytes_equal(TEXT_RENDER, render, 4) || !bytes_equal(GET_COMMAND_KEY, key, 4))
         return;
-    }
-    if (!VirtualProtect((void *)CALL_SITE, 5, PAGE_EXECUTE_READWRITE, &old)) {
-        log_str("VirtualProtect failed\n");
+    if (!VirtualProtect((void *)CALL_SITE, 5, PAGE_EXECUTE_READWRITE, &old))
         return;
-    }
     *(int32_t *)(CALL_SITE + 1) = (int32_t)((uintptr_t)text_render_hook - (CALL_SITE + 5));
     VirtualProtect((void *)CALL_SITE, 5, old, &old);
     FlushInstructionCache(GetCurrentProcess(), (void *)CALL_SITE, 5);
-    log_str("hooked Text_RenderGlyphs call at 0x49FD14\n");
 }
 
 BOOL WINAPI DllMain(HANDLE inst, DWORD reason, void *reserved)

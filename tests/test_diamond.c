@@ -16,8 +16,6 @@ BOOL VirtualProtect(void *a, uintptr_t b, DWORD c, DWORD *d) { (void)a; (void)b;
 BOOL FlushInstructionCache(HANDLE a, const void *b, uintptr_t c) { (void)a; (void)b; (void)c; return 0; }
 HANDLE GetCurrentProcess(void) { return 0; }
 DWORD GetModuleFileNameA(HANDLE a, char *b, DWORD c) { (void)a; (void)c; b[0] = 0; return 0; }
-HANDLE CreateFileA(LPCSTR a, DWORD b, DWORD c, void *d, DWORD e, DWORD f, HANDLE g) { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; (void)g; return INVALID_HANDLE_VALUE; }
-BOOL WriteFile(HANDLE a, const void *b, DWORD c, DWORD *d, void *e) { (void)a; (void)b; (void)c; (void)d; (void)e; return 1; }
 
 static const unsigned char DIAMOND[] = {0x20,0x20,5,0x34,0x25,2,5,0x37,0x24,0x20,5,0x35,0x22,2,0x20,0x20,5,0x36,0x23,0};
 

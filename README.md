@@ -6,7 +6,6 @@ buttons instead: A, B, X, Y, L1/R1, L2/R2, View and Menu.
 ![Config > Button assignment with Deck glyphs](docs/button-assignment.png)
 
 - The icons follow your button setup from the in-game Config menu.
-- In the Timber train mission, the keypad in Rinoa's briefing is laid out like the Deck's buttons.
 - On keyboard, the game shows key names as usual.
 
 ## Requirements
@@ -18,15 +17,18 @@ buttons instead: A, B, X, Y, L1/R1, L2/R2, View and Menu.
 
 1. Download `FF8DeckGlyphs.iroj` from the [latest release](../../releases/latest).
 2. In Junction VIII, click **Import mod** and pick the file.
-3. Activate **FF8 Steam Deck Button Glyphs** and start the game. Junction VIII may warn that the
-   mod contains code; that is expected.
+3. Activate **FF8 Steam Deck Button Glyphs** and start the game.
 
 Using AxlRose's mod with its UI? Place this mod above it in the list.
 
+Known limitation: the keypad in Rinoa's briefing for the Timber train mission keeps the
+PlayStation layout. With the default buttons it matches the Deck; if you swap face buttons in
+the Config menu, the glyphs show up in other corners.
+
 ## Building
 
-`tools/release.sh <version>` builds `dist/FF8DeckGlyphs.iroj`. Needs clang, lld, llvm, Python 3
-with Pillow and the DejaVu fonts.
+`tools/release.sh <version>` builds `dist/FF8DeckGlyphs.iroj`. Needs Python 3 with Pillow and the
+DejaVu fonts.
 
 ## License
 

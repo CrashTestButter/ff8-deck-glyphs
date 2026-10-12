@@ -3,8 +3,6 @@
 set -e
 cd "$(dirname "$0")/.."
 V=${1:?usage: tools/release.sh <version>}
-tools/build_dll.sh
-tools/test.sh
 python3 tools/make_glyphs.py mod/mods/Textures/data/eng/menu/hires
 P=build/pkg
 rm -rf $P && mkdir -p $P dist

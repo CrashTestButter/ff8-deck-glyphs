@@ -3,7 +3,8 @@
 Final Fantasy VIII on PC labels buttons as "B1", "B2", ... This mod shows the actual Steam Deck
 buttons instead: A, B, X, Y, L1/R1, L2/R2, View and Menu.
 
-![Config > Button assignment with Deck glyphs](docs/button-assignment.png)
+<img width="1262" height="942" alt="Screenshot_2026-10-20_17-00-22" src="https://github.com/user-attachments/assets/656a7526-889d-40eb-9c34-5eb908d33175" />
+
 
 - The icons follow your button setup from the in-game Config menu.
 - On keyboard, the game shows key names as usual.

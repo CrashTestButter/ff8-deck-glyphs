@@ -23,7 +23,6 @@ case $1 in
     *)      echo "usage: tools/bump.sh major|minor|bugfix" >&2; exit 1 ;;
 esac
 
-new=$major.$minor
-[ "$bugfix" -gt 0 ] && new=$new$bugfix
+new=$major.$minor$bugfix
 sed -i "s|<Version>$cur</Version>|<Version>$new</Version>|" $F
 echo "$cur -> $new"

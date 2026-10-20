@@ -23,10 +23,11 @@ FONTS = ['/usr/share/fonts/TTF/DejaVuSans-Bold.ttf',
          '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf']
 FONT = next((f for f in FONTS if os.path.exists(f)), FONTS[0])
 SS = 4  # supersampling
+MAX_H = 80  # button glyphs taller than this overlap the next text row
+BUTTONS = ('face', 'bumper', 'trigger', 'wide')
 
 BODY_TOP, BODY_BOTTOM = (74, 77, 84), (30, 31, 35)
 RIM = (150, 154, 162)
-SHADOW = (0, 0, 0, 150)
 LEGEND = (255, 255, 255)
 
 # (page, x, y, w, h, kind, label) in 1024-atlas pixels
@@ -70,6 +71,15 @@ CELLS = [
 ]
 
 
+def downsample(img, w, h):
+    """Scale down and make alpha binary: the engine draws these sprites without blending."""
+    small = img.convert('RGBa').resize((w, h), Image.LANCZOS).convert('RGBA')
+    mask = small.getchannel('A').point(lambda a: 255 if a >= 128 else 0)
+    out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    out.paste(small.convert('RGB'), (0, 0), mask)
+    return out
+
+
 def gradient_fill(size, mask, top, bottom):
     w, h = size
     grad = Image.new('RGBA', (1, h))
@@ -107,9 +117,6 @@ def shape_mask(size, kind, box):
 def draw_button(size, kind, box, rim_px):
     layer = Image.new('RGBA', size, (0, 0, 0, 0))
     x0, y0, x1, y1 = box
-    off = rim_px
-    shadow = shape_mask(size, kind, (x0, y0 + off, x1, y1 + off))
-    layer.paste(Image.new('RGBA', size, SHADOW), (0, 0), shadow)
     outer = shape_mask(size, kind, box)
     layer.alpha_composite(gradient_fill(size, outer, RIM, (70, 72, 78)))
     inner = shape_mask(size, kind, (x0 + rim_px, y0 + rim_px, x1 - rim_px, y1 - rim_px))
@@ -142,26 +149,25 @@ def glyph(w, h, kind, label):
     img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     unit = min(W, H)
     rim = max(round(unit * 0.045), SS * 2)
-    pad = round(unit * 0.06)
     if kind == 'face':
-        box = (pad, pad, W - pad, H - pad - rim)
+        box = (0, 0, W - 1, H - 1)
         img.alpha_composite(draw_button((W, H), kind, box, rim))
         text_center(ImageDraw.Draw(img), box, label, round((box[3] - box[1]) * 0.62))
     elif kind in ('bumper', 'trigger'):
         if kind == 'bumper':
-            box = (pad, round(H * 0.18), W - pad, H - pad - rim)
+            box = (0, 0, W - 1, round(H * 0.82))
         else:
-            box = (round(W * 0.10), pad, W - round(W * 0.10), H - pad - rim)
+            box = (0, 0, round(W * 0.8), H - 1)
         img.alpha_composite(draw_button((W, H), kind, box, rim))
         tb = (box[0], box[1] + (box[3] - box[1]) * (0.12 if kind == 'trigger' else 0), box[2], box[3])
         text_center(ImageDraw.Draw(img), tb, label, round(min((box[3] - box[1]) * 0.62, (box[2] - box[0]) * 0.42)))
     elif kind == 'wide':  # View / Menu
-        box = (pad, pad, W - pad, H - pad - rim)
+        box = (0, 0, W - 1, H - 1)
         img.alpha_composite(draw_button((W, H), 'pill', box, rim))
         d = box[3] - box[1]
         cx, cy, s = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2, d * 0.5
         (view_symbol if label == 'view' else menu_symbol)(ImageDraw.Draw(img), cx, cy, s, max(round(d * 0.08), SS))
-    return img.resize((w, h), Image.LANCZOS)
+    return downsample(img, w, h)
 
 
 OUTLINE = (20, 20, 24, 255)
@@ -210,7 +216,7 @@ def dpad_tile(w, h, label):
         img = styled((W, H), mask, (255, 255, 255), (250, 250, 252), (196, 200, 208), round(o), round(0.35 * u))
     else:
         img = styled((W, H), mask, RIM, BODY_TOP, BODY_BOTTOM, round(o), round(0.35 * u))
-    return img.resize((w, h), Image.LANCZOS)
+    return downsample(img, w, h)
 
 
 def arrow(w, h):
@@ -220,7 +226,7 @@ def arrow(w, h):
     o = 0.6 * u
     mask = poly_mask((W, H), [(o, o), (5.5 * u - o, 5 * u), (o, 10 * u - o)])
     img = styled((W, H), mask, (255, 150, 140), (236, 52, 40), (150, 16, 12), round(o), round(0.4 * u))
-    return img.resize((w, h), Image.LANCZOS)
+    return downsample(img, w, h)
 
 
 def star(w, h):
@@ -232,7 +238,7 @@ def star(w, h):
             cy - (r_out if k % 2 == 0 else r_in) * math.cos(k * math.pi / 5)) for k in range(10)]
     o = round(W * 0.045)
     img = styled((W, H), poly_mask((W, H), pts), (170, 245, 180), (96, 220, 120), (24, 130, 56), o, round(W * 0.03))
-    return img.resize((w, h), Image.LANCZOS)
+    return downsample(img, w, h)
 
 
 def letter(w, h, text):
@@ -243,7 +249,7 @@ def letter(w, h, text):
     l, t, r, b = d.textbbox((0, 0), text, font=font)
     d.text(((W - (r - l)) / 2 - l, (H - (b - t)) / 2 - t), text, font=font, fill=255)
     img = styled((W, H), mask, (150, 154, 162), (255, 255, 255), (205, 208, 214), round(W * 0.035), round(W * 0.03))
-    return img.resize((w, h), Image.LANCZOS)
+    return downsample(img, w, h)
 
 
 def save_dds(im, path):
@@ -266,6 +272,8 @@ def build(out):
             if p != page:
                 continue
             atlas.paste((0, 0, 0, 0), (x, y, x + w, y + h))
+            if kind in BUTTONS and h > MAX_H:
+                w, h = round(w * MAX_H / h), MAX_H
             atlas.alpha_composite(glyph(w, h, kind, label), (x, y))
         path = os.path.join(out, f'iconfl{page:02d}_04.dds')
         save_dds(atlas, path)

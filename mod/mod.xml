@@ -11,7 +11,7 @@
 Requires the English Steam version of FF8 with Junction VIII.
 
 Using AxlRose's mod with its UI? Place this mod above it in the list.</Description>
-  <ReleaseNotes>0.9: Auto Sort now places this mod above AxlRose's mod. 0.8: textures only, the Timber train keypad fix (DLL) is removed. 0.7: first public release.</ReleaseNotes>
+  <ReleaseNotes>0.9: button glyphs are smaller and sharp-edged, so they no longer overlap the next line of text; Auto Sort now places this mod above AxlRose's mod. 0.8: textures only, the Timber train keypad fix (DLL) is removed. 0.7: first public release.</ReleaseNotes>
   <FFNxConfig>
     <ff8_use_gamepad_icons>true</ff8_use_gamepad_icons>
   </FFNxConfig>

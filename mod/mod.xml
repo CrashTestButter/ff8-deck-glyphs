@@ -3,7 +3,7 @@
   <ID>0b3d409a-1923-4e94-9d41-ffa331b6d517</ID>
   <Name>FF8 Steam Deck Button Glyphs</Name>
   <Author>todi</Author>
-  <Version>1.00</Version>
+  <Version>1.10</Version>
   <Category>User Interface</Category>
   <GameLanguage>ANY</GameLanguage>
   <ReleaseDate>2026-10-09</ReleaseDate>
@@ -12,7 +12,7 @@
 Works with FF8 on Steam (2013 or Remastered) with Junction VIII, in every game language.
 
 Using AxlRose's mod with its UI? Place this mod above it in the list.</Description>
-  <ReleaseNotes>1.00: new preview image. 0.9: button glyphs are smaller and sharp-edged, so they no longer overlap the next line of text; Auto Sort now places this mod above AxlRose's mod. 0.8: textures only, the Timber train keypad fix (DLL) is removed. 0.7: first public release.</ReleaseNotes>
+  <ReleaseNotes>1.10: works in every game language, including Japanese, and with the low-res icons; smaller download. 1.00: new preview image. 0.9: button glyphs are smaller and sharp-edged, so they no longer overlap the next line of text; Auto Sort now places this mod above AxlRose's mod. 0.8: textures only, the Timber train keypad fix (DLL) is removed. 0.7: first public release.</ReleaseNotes>
   <FFNxConfig>
     <ff8_use_gamepad_icons>true</ff8_use_gamepad_icons>
   </FFNxConfig>

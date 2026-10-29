@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the two FFNx replacement pages of the FF8 menu icon texture with Steam Deck glyphs.
+"""Build the FFNx replacement pages of the FF8 menu icon texture with Steam Deck glyphs, for every language.
 
 FFNx loads menu/hires/iconfl01_04 and iconfl03_04 for the sprites the game draws from those pages with
 palette 4 (CLUT row 260 in icon.sp1). Only those sprites are drawn; the rest of each page stays
@@ -11,10 +11,15 @@ FFNx (steam_stock_launcher) shows these PS icons for the DirectInput buttons bel
 which on a Deck are: Cross = A, Circle = B, Square = X, Triangle = Y, L1, R1, L2, R2,
 Select = View, Start = Menu.
 
+Without the hires pages (Japanese data, or the low-res font option) the game draws the same sprites
+from the single low-res page menu/icon (256 x 256 VRAM), so icon_04 is the four hires pages side by
+side at the same 8 px per VRAM pixel. icon.sp1 is identical in all languages for these sprites.
+Each language has its own folder: data/<eng|fre|ger|ita|spa|jp>/menu.
+
 Output is uncompressed DDS (B8G8R8A8, one mip): FFNx tries mod_ext "dds" before "png", so only a DDS
 can compete with other texture mods (e.g. AxlRose's UI) - then J8's load order decides.
 
-Usage: make_glyphs.py <out folder>   (writes iconfl01_04.dds, iconfl03_04.dds)
+Usage: make_glyphs.py <Textures folder>   (writes data/<lang>/menu/hires/iconfl0[13]_04.dds, icon_04.dds)
 """
 import os, struct, sys
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -25,6 +30,8 @@ FONT = next((f for f in FONTS if os.path.exists(f)), FONTS[0])
 SS = 4  # supersampling
 MAX_H = 80  # button glyphs taller than this overlap the next text row
 BUTTONS = ('face', 'bumper', 'trigger', 'wide')
+LANGS = ('eng', 'fre', 'ger', 'ita', 'spa', 'jp')
+HIRES_LANGS = ('eng', 'fre', 'ger', 'ita', 'spa')  # the Japanese data has no hires icon pages
 
 BODY_TOP, BODY_BOTTOM = (74, 77, 84), (30, 31, 35)
 RIM = (150, 154, 162)
@@ -58,6 +65,7 @@ CELLS = [
     (1, 256, 512, 64, 128, 'arrow', ''),        # id 6: menu pointer arrow (u160 v64, 8x16)
     (1, 768, 768, 128, 128, 'letter', 'A'),     # id 178 (u224 v96)
     (3, 0, 0, 128, 128, 'face', 'L'),           # id 137 (u128 v128)
+    (2, 896, 0, 128, 128, 'face', 'R'),         # id 138 (u112 v128); iconfl02 is not replaced, low-res page only
     (3, 256, 896, 128, 128, 'star', ''),        # id 175 (u160 v240)
     # ids 140..143: D-pad with one arm lit, built from 8x8 arm tiles (u176..207 v80..95)
     (1, 384, 640, 64, 64, 'dpad', 'up+'),
@@ -252,7 +260,7 @@ def letter(w, h, text):
     return downsample(img, w, h)
 
 
-def save_dds(im, path):
+def dds(im):
     """Legacy DDS header, 32-bit A8R8G8B8 (BGRA in memory), no mipmaps."""
     w, h = im.size
     pf = struct.pack('<II4sIIIII', 32, 0x41, b'\0\0\0\0', 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000)
@@ -260,24 +268,37 @@ def save_dds(im, path):
     head += struct.pack('<IIIII', 0x1000, 0, 0, 0, 0)
     assert len(head) == 128
     r, g, b, a = im.convert('RGBA').split()
-    with open(path, 'wb') as f:
-        f.write(head + Image.merge('RGBA', (b, g, r, a)).tobytes())
+    return head + Image.merge('RGBA', (b, g, r, a)).tobytes()
+
+
+def page_atlas(page):
+    atlas = Image.new('RGBA', (1024, 1024), (0, 0, 0, 0))
+    for p, x, y, w, h, kind, label in CELLS:
+        if p != page:
+            continue
+        atlas.paste((0, 0, 0, 0), (x, y, x + w, y + h))
+        if kind in BUTTONS and h > MAX_H:
+            w, h = round(w * MAX_H / h), MAX_H
+        atlas.alpha_composite(glyph(w, h, kind, label), (x, y))
+    return atlas
 
 
 def build(out):
-    os.makedirs(out, exist_ok=True)
-    for page in (1, 3):
-        atlas = Image.new('RGBA', (1024, 1024), (0, 0, 0, 0))
-        for p, x, y, w, h, kind, label in CELLS:
-            if p != page:
+    pages = {page: page_atlas(page) for page in (1, 2, 3)}
+    lowres = Image.new('RGBA', (2048, 2048), (0, 0, 0, 0))
+    for page, atlas in pages.items():
+        lowres.alpha_composite(atlas, ((page & 1) * 1024, (page >> 1) * 1024))
+    files = {f'hires/iconfl{page:02d}_04.dds': dds(pages[page]) for page in (1, 3)}
+    files['icon_04.dds'] = dds(lowres)
+    for lang in LANGS:
+        for name, data in files.items():
+            if name.startswith('hires/') and lang not in HIRES_LANGS:
                 continue
-            atlas.paste((0, 0, 0, 0), (x, y, x + w, y + h))
-            if kind in BUTTONS and h > MAX_H:
-                w, h = round(w * MAX_H / h), MAX_H
-            atlas.alpha_composite(glyph(w, h, kind, label), (x, y))
-        path = os.path.join(out, f'iconfl{page:02d}_04.dds')
-        save_dds(atlas, path)
-        print(path, atlas.size)
+            path = os.path.join(out, 'data', lang, 'menu', name)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'wb') as f:
+                f.write(data)
+            print(path)
 
 
 if __name__ == '__main__':

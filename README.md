@@ -11,7 +11,7 @@ buttons instead: A, B, X, Y, L1/R1, L2/R2, View and Menu.
 
 ## Requirements
 
-- Final Fantasy VIII, Steam version (2013 or Remastered), English
+- Final Fantasy VIII, Steam version (2013 or Remastered), any game language
 - [Junction VIII](https://github.com/tsunamods-codes/Junction-VIII)
 
 ## Install

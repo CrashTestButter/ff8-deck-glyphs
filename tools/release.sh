@@ -3,7 +3,8 @@
 set -e
 cd "$(dirname "$0")/.."
 V=${1:?usage: tools/release.sh <version>}
-python3 tools/make_glyphs.py mod/mods/Textures/data/eng/menu/hires
+rm -rf mod/mods/Textures
+python3 tools/make_glyphs.py mod/mods/Textures
 P=build/pkg
 rm -rf $P && mkdir -p $P dist
 cp -r mod/. $P/

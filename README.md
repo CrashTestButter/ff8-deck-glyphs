@@ -34,5 +34,5 @@ DejaVu fonts.
 
 ## License
 
-GPL-3.0. Steam Deck is a trademark of Valve Corporation. This project is not affiliated with Valve
+GPL-3.0. Steam Deck and Steam Controller are trademarks of Valve Corporation. This project is not affiliated with Valve
 or Square Enix.

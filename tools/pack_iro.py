@@ -7,7 +7,8 @@ Writes the same layout as J8's IrosArc.Create with ArchiveFlags.None
   dir    : int32 count, then per file: u16 entry_len, u16 name_bytes, UTF-16LE name ('\\' separators),
            int32 file flags (0 = stored, 2 = LZMA), int64 offset, int32 length
   data   : stored bytes, or for LZMA: int32 decompressed size, int32 props size (5), the LZMA props,
-           then the raw LZMA stream. Like J8, a file stays stored if LZMA would not save 20 %.
+           then the raw LZMA stream. Like J8, a file is stored as is when its LZMA record would be more
+           than 25 % larger than the file.
 All little endian. Usage: pack_iro.py <folder> <out.iroj>  (then it re-reads and verifies the archive)
 """
 import lzma, os, struct, sys

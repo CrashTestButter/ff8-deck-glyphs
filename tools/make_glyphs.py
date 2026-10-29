@@ -11,7 +11,7 @@ FFNx (steam_stock_launcher) shows these PS icons for the DirectInput buttons bel
 which on a Deck are: Cross = A, Circle = B, Square = X, Triangle = Y, L1, R1, L2, R2,
 Select = View, Start = Menu.
 
-Without the hires pages (Japanese data, or the low-res font option) the game draws the same sprites
+Without the hires pages (Japanese data, or FFNx ff8_high_res_font = 0) the game draws the same sprites
 from the single low-res page menu/icon (256 x 256 VRAM), so icon_04 is the four hires pages side by
 side at the same 8 px per VRAM pixel. icon.sp1 is identical in all languages for these sprites.
 Each language has its own folder: data/<eng|fre|ger|ita|spa|jp>/menu.

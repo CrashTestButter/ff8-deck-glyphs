@@ -7,7 +7,7 @@
   <Category>User Interface</Category>
   <GameLanguage>ANY</GameLanguage>
   <ReleaseDate>2026-10-09</ReleaseDate>
-  <Description>Shows the Steam Deck buttons (A, B, X, Y, L1/R1, L2/R2, View, Menu) wherever FF8 names a button, instead of "B1", "B2", ... The icons follow your button setup from the in-game Config menu.
+  <Description>Shows the Steam Deck / Steam Controller buttons (A, B, X, Y, L1/R1, L2/R2, View, Menu) wherever FF8 names a button, instead of "B1", "B2", ... The icons follow your button setup from the in-game Config menu.
 
 Works with FF8 on Steam (2013 or Remastered) with Junction VIII, in every game language.
 

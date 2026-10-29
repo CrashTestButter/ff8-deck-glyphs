@@ -18,7 +18,8 @@ buttons instead: A, B, X, Y, L1/R1, L2/R2, View and Menu.
 
 1. Download `FF8DeckGlyphs.iroj` from the [latest release](../../releases/latest).
 2. In Junction VIII, click **Import mod** and pick the file.
-3. Activate **FF8 Steam Deck Button Glyphs** and start the game.
+3. Activate **FF8 Steam Deck Button Glyphs** and start the game from Junction VIII. Started
+   without Junction VIII, the game shows its own icons.
 
 Using AxlRose's mod with its UI? Place this mod above it in the list.
 
